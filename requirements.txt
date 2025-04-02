@@ -1,0 +1,6 @@
+PySide6==6.8.3
+PySide6_Addons==6.8.3
+PySide6_Essentials==6.8.3
+pytz==2025.2
+pyudev==0.24.3
+shiboken6==6.8.3
