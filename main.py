@@ -2,15 +2,15 @@ import sys
 import threading
 from PySide6.QtWidgets import QApplication
 from main_window import MainWindow
-from process_usb_dev import monitor_usb, init_db
+from process_usb_dev import monitor_usb, init_db, update_unreliable_events
 
 def main():
     init_db()
+    update_unreliable_events()  
     usb_thread = threading.Thread(target=monitor_usb, daemon=True)
     usb_thread.start()
-    
+
     app = QApplication(sys.argv)
-    
     window = MainWindow()
     window.setFixedSize(800, 600)
     window.setWindowTitle("USB Logger")
