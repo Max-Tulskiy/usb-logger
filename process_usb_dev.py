@@ -1,5 +1,4 @@
 import sqlite3
-import time
 import pyudev
 import pytz
 from datetime import datetime
@@ -23,7 +22,7 @@ def init_db():
 def log_event(device_id, action):
     if device_id == "Unknown":
         return
-    
+
     moscow_tz = pytz.timezone("Europe/Moscow")
     utc_now = datetime.now(pytz.utc)
     moscow_now = utc_now.astimezone(moscow_tz)
@@ -39,7 +38,7 @@ def monitor_usb():
     context = pyudev.Context()
     monitor = pyudev.Monitor.from_netlink(context)
     monitor.filter_by(subsystem='usb')
-    
+
     for device in iter(monitor.poll, None):
         if device.action == 'add':
             device_id = device.get('ID_SERIAL') or device.get('DEVNAME') or 'Unknown'
@@ -50,6 +49,32 @@ def monitor_usb():
                 device_id = device.parent.get('ID_SERIAL', 'Unknown')
             if not device_id:
                 device_id = 'Unknown'
-        
+
         log_event(device_id, device.action)
-        # print(f"{device.action.upper()} - {device_id} at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+def update_unreliable_events():
+    conn = sqlite3.connect("usb_devices.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT a.id, a.device_id
+        FROM usb_events a
+        WHERE a.action = 'add'
+        AND NOT EXISTS (
+            SELECT 1 FROM usb_events b
+            WHERE b.device_id = a.device_id
+              AND b.action = 'remove'
+              AND b.timestamp > a.timestamp
+        )
+    """)
+    rows = cursor.fetchall()
+
+    for event_id, device_id in rows:
+        cursor.execute("""
+            UPDATE usb_events
+            SET action = 'Unreliable'
+            WHERE id = ? AND action = 'add'
+        """, (event_id,))
+
+    conn.commit()
+    conn.close()
